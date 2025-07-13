@@ -1,3 +1,81 @@
 from rest_framework import serializers
 
-# Create your serializers here.
+# Create your serializers here.from rest_framework import serializers
+from django.contrib.auth.models import User
+from .models import Product, Brand, ProductImage, ProductAttribute, ProductReview, ProductView
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'alt_text', 'is_primary', 'created_at']
+        read_only_fields = ['created_at']
+
+class ProductAttributeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductAttribute
+        fields = ['id', 'name', 'value']
+
+class BrandSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Brand
+        fields = ['id', 'name', 'slug', 'logo', 'description', 'is_active', 'created_at']
+        read_only_fields = ['slug', 'created_at']
+
+class ProductReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    user_id = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = ProductReview
+        fields = [
+            'id', 'user', 'user_id', 'rating', 'review_text', 
+            'is_verified_purchase', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+class ProductSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    brand_name = serializers.CharField(source='brand.name', read_only=True)
+    primary_image = serializers.SerializerMethodField()
+    discount_amount = serializers.SerializerMethodField()
+    is_on_sale = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Product
+        fields = [
+            'id', 'name', 'slug', 'description', 'short_description',
+            'price', 'original_price', 'discount_percentage', 'discount_amount',
+            'category', 'category_name', 'brand', 'brand_name',
+            'stock', 'stock_status', 'sku',
+            'is_active', 'is_featured', 'is_trending', 'is_on_sale',
+            'view_count', 'rating_average', 'rating_count',
+            'primary_image', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'slug', 'discount_percentage', 'discount_amount', 'is_on_sale',
+            'view_count', 'rating_average', 'rating_count', 'stock_status',
+            'created_at', 'updated_at'
+        ]
+    
+    def get_primary_image(self, obj):
+        primary_image = obj.images.filter(is_primary=True).first()
+        if primary_image:
+            return ProductImageSerializer(primary_image).data
+        return None
+    
+    def get_discount_amount(self, obj):
+        return obj.get_discount_amount()
+    
+    def get_is_on_sale(self, obj):
+        return obj.is_on_sale()
+
+class ProductDetailSerializer(ProductSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)
+    attributes = ProductAttributeSerializer(many=True, read_only=True)
+    reviews = ProductReviewSerializer(many=True, read_only=True)
+    
+    class Meta(ProductSerializer.Meta):
+        fields = ProductSerializer.Meta.fields + [
+            'images', 'attributes', 'reviews', 'meta_title', 'meta_description',
+            'purchase_count'
+        ]
