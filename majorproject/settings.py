@@ -41,9 +41,9 @@ INSTALLED_APPS = [
     'apps.products',
     'apps.cart',
     'apps.image_search',
-    'apps.categories',
     'apps.authentication',
     'apps.orders',
+    'apps.categories',
     
 ]
 
