@@ -2,29 +2,20 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 from PIL import Image
+from .validators import validate_image_file_extension, validate_image_file_size
+from apps.categories.models import Category  # <-- Import Category from categories
+from decimal import Decimal
+
 import os
 
-class Category(models.Model):
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True, blank=True)
-    description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='categories/', blank=True, null=True)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+def to_float(val):
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, Decimal):
+        return float(val)
+    return 0.0
 
-    class Meta:
-        verbose_name_plural = "Categories"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
+# Removed local Category model
 
 class Brand(models.Model):
     name = models.CharField(max_length=100)
@@ -69,8 +60,6 @@ class Product(models.Model):
     sku = models.CharField(max_length=50, unique=True)
     
     # SEO and Meta
-    meta_title = models.CharField(max_length=200, blank=True)
-    meta_description = models.TextField(blank=True)
     
     # Product Status
     is_active = models.BooleanField(default=True)
@@ -106,8 +95,10 @@ class Product(models.Model):
             self.slug = slugify(self.name)
         
         # Calculate discount percentage
+        orig = to_float(self.original_price)
+        prc = to_float(self.price)
         if self.original_price and self.original_price > self.price:
-            self.discount_percentage = ((self.original_price - self.price) / self.original_price) * 100
+            self.discount_percentage = ((orig - prc) / orig) * 100 if orig else 0
         
         # Update stock status based on stock quantity
         if self.stock <= 0:
@@ -120,18 +111,21 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     def get_discount_amount(self):
-        if self.original_price:
-            return self.original_price - self.price
-        return 0
+        orig = to_float(self.original_price)
+        prc = to_float(self.price)
+        return orig - prc
 
     def is_on_sale(self):
         return self.original_price and self.original_price > self.price
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='products/')
+    image = models.ImageField(
+        upload_to='products/',
+        validators=[validate_image_file_extension, validate_image_file_size]
+    )
     alt_text = models.CharField(max_length=200, blank=True)
-    is_primary = models.BooleanField(default=False)
+    is_primary = models.BooleanField()
     
     # For AI image search feature
     feature_vector = models.JSONField(null=True, blank=True)
@@ -146,11 +140,13 @@ class ProductImage(models.Model):
         
         # Resize image if too large
         if self.image:
-            img = Image.open(self.image.path)
-            if img.height > 800 or img.width > 800:
-                output_size = (800, 800)
-                img.thumbnail(output_size)
-                img.save(self.image.path)
+            img_path = getattr(self.image, 'path', None)
+            if img_path and os.path.exists(img_path):
+                img = Image.open(img_path)
+                if img.height > 800 or img.width > 800:
+                    output_size = (800, 800)
+                    img.thumbnail(output_size)
+                    img.save(img_path)
 
 class ProductAttribute(models.Model):
     """For product specifications like Color, Size, Weight etc."""
@@ -169,7 +165,7 @@ class ProductReview(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
     review_text = models.TextField(blank=True)
-    is_verified_purchase = models.BooleanField(default=False)
+    is_verified_purchase = models.BooleanField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -177,7 +173,7 @@ class ProductReview(models.Model):
         unique_together = ('product', 'user')
 
     def __str__(self):
-        return f"Review for {self.product.name} by {self.user.username}"
+        return f"Review for {self.product.name} by {str(self.user)}"
 
 class ProductView(models.Model):
     """Track product views for analytics and trending calculation"""

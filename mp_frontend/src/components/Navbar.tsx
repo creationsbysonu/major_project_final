@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Store, Menu, X, ShoppingCart, Sun, Moon, Camera, Search, Play, Pause
+  Store, Menu, X, ShoppingCart, Sun, Moon, Camera, Search, Play, Pause, User
 } from 'lucide-react';
 import AuthModal from './AuthModal';
 import CartModal from './CartModal';
 import FeedbackModal from './FeedBackModal';
-import { User } from 'lucide-react';
+import { authAPI } from '@/api/services';
+import { Link } from 'react-router-dom';
 
 const categories = ['Electronics', 'Fashion', 'Books', 'Home_Decor', 'Gadgets'];
 
@@ -19,6 +20,26 @@ export default function Navbar() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access');
+    if (token) {
+      authAPI.getProfile()
+        .then(res => setUser(res.data))
+        .catch(() => setUser(null));
+    } else {
+      setUser(null);
+    }
+  }, [isAuthOpen]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+    setUser(null);
+    window.location.reload();
+  };
 
   const yourCartItems: any[] = []; // Replace with actual cart data
 
@@ -128,13 +149,29 @@ export default function Navbar() {
               </span>
             </motion.button>
 
-            <motion.button
-                onClick={() => setIsAuthOpen(true)}
-                whileTap={{ scale: 1.2 }}
-                className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition"
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(v => !v)}
+                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition"
+                >
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{user.username}</span>
+                </button>
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 bg-white dark:bg-gray-900 shadow-lg rounded-lg py-2 z-50 min-w-[120px]">
+                    <Link to="/profile" className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
+                    <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500" onClick={handleLogout}>Logout</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition flex items-center"
               >
                 <User className="text-gray-700 dark:text-gray-300" size={20} />
-            </motion.button>
+              </Link>
+            )}
 
             <motion.button onClick={togglePlay} whileTap={{ scale: 1.2, rotate: 180 }} className="p-4 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition-all">
               <AnimatePresence initial={false} mode="wait">
@@ -193,7 +230,29 @@ export default function Navbar() {
                 <motion.button onClick={toggleTheme} whileTap={{ scale: 1.2 }} className="p-4 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition">
                   {isDark ? <Moon className="text-blue-400" size={22} /> : <Sun className="text-yellow-500" size={22} />}
                 </motion.button>
-                <button onClick={() => setIsAuthOpen(true)} className="text-sm font-medium hover:underline text-gray-700 dark:text-gray-300">Login / Signup</button>
+                {user ? (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowProfileMenu(v => !v)}
+                      className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition"
+                    >
+                      <span className="font-semibold text-gray-700 dark:text-gray-200">{user.username}</span>
+                    </button>
+                    {showProfileMenu && (
+                      <div className="absolute right-0 mt-2 bg-white dark:bg-gray-900 shadow-lg rounded-lg py-2 z-50 min-w-[120px]">
+                        <Link to="/profile" className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
+                        <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500" onClick={handleLogout}>Logout</button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition flex items-center"
+                  >
+                    <User className="text-gray-700 dark:text-gray-300" size={20} />
+                  </Link>
+                )}
                 <button onClick={() => setIsCartOpen(true)} className="relative text-gray-800 dark:text-gray-100">
                   <ShoppingCart size={22} />
                   <span className="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5">
@@ -207,7 +266,7 @@ export default function Navbar() {
       </motion.nav>
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={yourCartItems} />
+      <CartModal isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
     </>
   );

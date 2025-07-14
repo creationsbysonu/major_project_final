@@ -1,118 +1,211 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Lock, Unlock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { authAPI } from '@/api/services';
 
-type AuthModalProps = {
+interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-};
+}
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
+const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
+  const [mode, setMode] = useState<'login' | 'register' | 'profile'>('login');
+  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [profile, setProfile] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && localStorage.getItem('access')) {
+      authAPI.getProfile().then(res => {
+        setProfile(res.data);
+        setMode('profile');
+      });
+    } else if (isOpen) {
+      setMode('login');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (mode === 'profile') {
+      setProfile({ ...profile, [e.target.name]: e.target.value });
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authAPI.login({ username: form.username, password: form.password });
+      localStorage.setItem('access', res.data.access);
+      localStorage.setItem('refresh', res.data.refresh);
+      setSuccess('Login successful!');
+      setTimeout(() => {
+        setSuccess(null);
+        onClose();
+      }, 1000);
+    } catch (err: any) {
+      setError('Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await authAPI.register(form);
+      setSuccess('Registration successful! Please login.');
+      setMode('login');
+    } catch (err: any) {
+      setError('Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await authAPI.updateProfile(profile);
+      setSuccess('Profile updated!');
+      setTimeout(() => setSuccess(null), 1500);
+    } catch (err: any) {
+      setError('Profile update failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+    setProfile(null);
+    setMode('login');
+    onClose();
+    window.location.reload();
+  };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-4xl mx-4 overflow-hidden"
-          >
-            <div className="flex flex-col md:flex-row">
-              {/* Left Side */}
-              <div className="w-full md:w-1/2 p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                    {isLogin ? 'Login to e-pasal' : 'Create Account'}
-                  </h2>
-                  <button onClick={onClose} className="text-gray-500 hover:text-primary">
-                    <X size={24} />
-                  </button>
-                </div>
-
-                <form className="space-y-4">
-                  {!isLogin && (
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                      <input type="text" className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                    <input type="email" className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
-
-                  <div className="relative">
-                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="w-full px-4 py-2 pr-10 rounded-lg bg-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    <motion.button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      whileTap={{ scale: 1.2, rotate: 180 }}
-                      className="absolute top-9 right-3 text-gray-600 dark:text-gray-300 hover:text-primary transition"
-                    >
-                      {showPassword ? <Unlock size={20} /> : <Lock size={20} />}
-                    </motion.button>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
-                  >
-                    {isLogin ? 'Login' : 'Sign Up'}
-                  </button>
-                </form>
-
-                <div className="mt-4 text-sm text-center text-gray-600 dark:text-gray-400">
-                  {isLogin ? (
-                    <p>
-                      Don't have an account?{' '}
-                      <button
-                        onClick={() => setIsLogin(false)}
-                        className="text-primary font-medium hover:underline"
-                      >
-                        Sign up
-                      </button>
-                    </p>
-                  ) : (
-                    <p>
-                      Already have an account?{' '}
-                      <button
-                        onClick={() => setIsLogin(true)}
-                        className="text-primary font-medium hover:underline"
-                      >
-                        Login
-                      </button>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Side */}
-              <div className="hidden md:flex w-full md:w-1/2 bg-gradient-to-br from-blue-500 to-orange-500 items-center justify-center p-8">
-                <img
-                  src="/ecommerce_logo.png"
-                  alt="e-pasal logo"
-                  className="max-w-xs w-full drop-shadow-xl rounded-xl"
+    <div className="fixed inset-0 bg-gray-200 bg-opacity-60 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-sm relative">
+        <button className="absolute top-2 right-2 text-xl" onClick={onClose}>&times;</button>
+        {mode === 'profile' ? (
+          <>
+            <h2 className="text-2xl font-bold mb-4">Profile</h2>
+            {error && <div className="mb-2 text-red-500">{error}</div>}
+            {success && <div className="mb-2 text-green-600">{success}</div>}
+            <form onSubmit={handleProfileUpdate}>
+              <input
+                type="text"
+                name="username"
+                value={profile?.username || ''}
+                disabled
+                className="w-full mb-2 px-3 py-2 border rounded bg-gray-100"
+              />
+              <input
+                type="email"
+                name="email"
+                value={profile?.email || ''}
+                onChange={handleChange}
+                className="w-full mb-2 px-3 py-2 border rounded"
+                required
+              />
+              <input
+                type="text"
+                name="first_name"
+                placeholder="First Name"
+                value={profile?.first_name || ''}
+                onChange={handleChange}
+                className="w-full mb-2 px-3 py-2 border rounded"
+              />
+              <input
+                type="text"
+                name="last_name"
+                placeholder="Last Name"
+                value={profile?.last_name || ''}
+                onChange={handleChange}
+                className="w-full mb-4 px-3 py-2 border rounded"
+              />
+              <button
+                type="submit"
+                className="w-full bg-primary text-white py-2 rounded font-semibold hover:bg-primary/90 transition"
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save'}
+              </button>
+            </form>
+            <button className="w-full mt-4 bg-red-500 text-white py-2 rounded font-semibold hover:bg-red-600 transition" onClick={handleLogout}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-bold mb-4">{mode === 'login' ? 'Login' : 'Register'}</h2>
+            {error && <div className="mb-2 text-red-500">{error}</div>}
+            {success && <div className="mb-2 text-green-600">{success}</div>}
+            <form onSubmit={mode === 'login' ? handleLogin : handleRegister}>
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                value={form.username}
+                onChange={handleChange}
+                className="w-full mb-2 px-3 py-2 border rounded"
+                required
+              />
+              {mode === 'register' && (
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={handleChange}
+                  className="w-full mb-2 px-3 py-2 border rounded"
+                  required
                 />
-              </div>
+              )}
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                className="w-full mb-4 px-3 py-2 border rounded"
+                required
+              />
+              <button
+                type="submit"
+                className="w-full bg-primary text-white py-2 rounded font-semibold hover:bg-primary/90 transition"
+                disabled={loading}
+              >
+                {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Register'}
+              </button>
+            </form>
+            <div className="mt-4 text-center">
+              {mode === 'login' ? (
+                <span>Don't have an account?{' '}
+                  <button className="text-primary underline" onClick={() => setMode('register')}>Register</button>
+                </span>
+              ) : (
+                <span>Already have an account?{' '}
+                  <button className="text-primary underline" onClick={() => setMode('login')}>Login</button>
+                </span>
+              )}
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </div>
+    </div>
   );
-}
+};
+
+export default AuthModal;
