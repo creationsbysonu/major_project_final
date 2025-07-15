@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.authentication',
     'apps.orders',
     'apps.categories',
+    'import_export',
     
 ]
 

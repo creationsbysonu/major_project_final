@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '@/api/services';
+import { ordersAPI } from '@/api/services';
 
 const ProfilePage = () => {
   const [profile, setProfile] = useState<any>(null);
@@ -11,6 +12,10 @@ const ProfilePage = () => {
   const [passwordForm, setPasswordForm] = useState({ old_password: '', new_password: '', confirm_new_password: '' });
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [showOrders, setShowOrders] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,6 +29,20 @@ const ProfilePage = () => {
       .catch(() => setError('Failed to load profile'))
       .finally(() => setLoading(false));
   }, [navigate]);
+
+  const handleShowOrders = async () => {
+    setShowOrders(true);
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const res = await ordersAPI.getMyOrders();
+      setOrders(res.data);
+    } catch {
+      setOrdersError('Failed to load orders');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -84,7 +103,7 @@ const ProfilePage = () => {
         </div>
         <nav className="flex flex-col gap-2">
           <button className="text-left px-3 py-2 rounded hover:bg-primary/10 font-medium bg-primary/10 text-primary">Profile</button>
-          <button className="text-left px-3 py-2 rounded hover:bg-primary/10 font-medium text-gray-700 dark:text-gray-200" disabled>My Orders</button>
+          <button className={`text-left px-3 py-2 rounded hover:bg-primary/10 font-medium ${showOrders ? 'bg-primary/10 text-primary' : 'text-gray-700 dark:text-gray-200'}`} onClick={handleShowOrders}>My Orders</button>
           <button className="text-left px-3 py-2 rounded hover:bg-primary/10 font-medium text-gray-700 dark:text-gray-200" disabled>My Reviews</button>
           <button className="text-left px-3 py-2 rounded hover:bg-primary/10 font-medium text-gray-700 dark:text-gray-200" disabled>My Wishlist</button>
           <button className="text-left px-3 py-2 rounded hover:bg-primary/10 font-medium text-gray-700 dark:text-gray-200" disabled>My Returns</button>
@@ -94,6 +113,49 @@ const ProfilePage = () => {
       {/* Main Content */}
       <main className="flex-1 p-8">
         <h2 className="text-3xl font-bold mb-6">Manage My Account</h2>
+        {showOrders ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-8">
+            <div className="font-semibold text-lg mb-4">My Orders</div>
+            {ordersLoading ? (
+              <div>Loading orders...</div>
+            ) : ordersError ? (
+              <div className="text-red-500">{ordersError}</div>
+            ) : orders.length === 0 ? (
+              <div className="text-gray-500">No orders found.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-2">Order #</th>
+                      <th className="px-4 py-2">Date</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2">Total</th>
+                      <th className="px-4 py-2">Items</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map(order => (
+                      <tr key={order.id} className="border-t">
+                        <td className="px-4 py-2 font-semibold">{order.id}</td>
+                        <td className="px-4 py-2">{new Date(order.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-2">{order.status}</td>
+                        <td className="px-4 py-2">₹{order.total_price}</td>
+                        <td className="px-4 py-2">
+                          <ul>
+                            {order.items.map((item: any) => (
+                              <li key={item.id}>{item.product?.name} x {item.quantity}</li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : null}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Personal Profile */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

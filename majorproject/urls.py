@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/auth/password_reset/', PasswordResetAPIView.as_view(), name='password_reset'),
     path('api/auth/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('api/auth/reset/<uidb64>/<token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),    path('api/auth/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('api/cart/', include('apps.cart.urls')),
 ]
 
 # Serve media files in development

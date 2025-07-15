@@ -5,8 +5,8 @@ from PIL import Image
 from .validators import validate_image_file_extension, validate_image_file_size
 from apps.categories.models import Category  # <-- Import Category from categories
 from decimal import Decimal
-
 import os
+import csv
 
 def to_float(val):
     if isinstance(val, (int, float)):

@@ -59,3 +59,8 @@ export const authAPI = {
   resetPasswordConfirm: ({ uid, token, new_password }) =>
     api.post(`/auth/reset/${uid}/${token}/`, { new_password }),
 };
+
+// Orders API
+export const ordersAPI = {
+  getMyOrders: () => api.get('/orders/my/'),
+};

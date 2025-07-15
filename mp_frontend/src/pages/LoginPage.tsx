@@ -20,7 +20,7 @@ const LoginPage = () => {
       const res = await authAPI.login(form);
       localStorage.setItem('access', res.data.access);
       localStorage.setItem('refresh', res.data.refresh);
-      navigate('/profile');
+      navigate('/');
     } catch {
       setError('Invalid credentials');
     } finally {
