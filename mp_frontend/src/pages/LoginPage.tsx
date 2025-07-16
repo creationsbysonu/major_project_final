@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '@/api/services';
+import { useGoogleLogin } from '@react-oauth/google';
+import axios from 'axios';
 
 const LoginPage = () => {
   const [form, setForm] = useState({ username: '', password: '' });
@@ -27,6 +29,27 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: async tokenResponse => {
+      try {
+        const res = await axios.post('http://127.0.0.1:8000/auth/google/', {
+          access_token: tokenResponse.access_token,
+        });
+        if (res.data.access) {
+          localStorage.setItem('access', res.data.access);
+          localStorage.setItem('refresh', res.data.refresh);
+        } else if (res.data.key) {
+          localStorage.setItem('access', res.data.key);
+        }
+        window.location.href = '/';
+      } catch (err) {
+        alert('Google login failed');
+      }
+    },
+    onError: () => alert('Google login failed'),
+    flow: 'implicit',
+  });
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -60,6 +83,15 @@ const LoginPage = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+        <div className="text-center mt-2">
+          <button
+            onClick={() => googleLogin()}
+            className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded py-2 px-4 bg-white hover:bg-gray-100 transition"
+          >
+            <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" className="w-5 h-5" />
+            Sign in with Google
+          </button>
+        </div>
         <div className="text-center mt-2">
           <Link to="/reset-password" className="text-primary underline">Forgot Password?</Link>
         </div>

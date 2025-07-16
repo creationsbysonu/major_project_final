@@ -49,6 +49,7 @@ export const searchAPI = {
 
 // Auth API
 export const authAPI = {
+  // The register method now expects recaptcha_token in the data payload if using reCAPTCHA
   register: (data) => api.post('/auth/register/', data),
   login: (data) => api.post('/auth/login/', data),
   refresh: (data) => api.post('/auth/refresh/', data),

@@ -10,7 +10,11 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.views import PasswordResetView
 from django.core.mail import send_mail
 from django.conf import settings
-
+from dj_rest_auth.registration.views import SocialLoginView
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
+import requests
 # Create your views here.
 
 class UserRegistrationSerializer(ModelSerializer):
@@ -42,6 +46,20 @@ class UserRegistrationSerializer(ModelSerializer):
 class UserRegistrationView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        recaptcha_token = request.data.get('recaptcha_token')
+        if not recaptcha_token:
+            return Response({'error': 'Missing reCAPTCHA token.'}, status=status.HTTP_400_BAD_REQUEST)
+        secret = settings.RECAPTCHA_SECRET_KEY
+        recaptcha_response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data={'secret': secret, 'response': recaptcha_token}
+        )
+        result = recaptcha_response.json()
+        if not result.get('success'):
+            return Response({'error': 'Invalid reCAPTCHA. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request, *args, **kwargs)
 
 class UserProfileSerializer(ModelSerializer):
     class Meta:
@@ -110,3 +128,20 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'success': True})
+
+
+
+
+class CustomGoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        user = self.user
+        if user and user.is_authenticated:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            })
+        return response

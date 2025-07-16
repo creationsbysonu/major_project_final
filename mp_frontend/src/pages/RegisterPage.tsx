@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '@/api/services';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const RegisterPage = () => {
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -18,8 +20,13 @@ const RegisterPage = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    if (!recaptchaToken) {
+      setError('Please complete the reCAPTCHA.');
+      setLoading(false);
+      return;
+    }
     try {
-      await authAPI.register(form);
+      await authAPI.register({ ...form, recaptcha_token: recaptchaToken });
       setSuccess('Registration successful! Please login.');
       setTimeout(() => navigate('/login'), 1200);
     } catch {
@@ -63,10 +70,15 @@ const RegisterPage = () => {
             className="w-full mb-6 px-3 py-2 border rounded"
             required
           />
+          <ReCAPTCHA
+            sitekey="6LfHFYUrAAAAACVr6Xq3VHKv4VJlaYSJgQ9uWCQE"
+            onChange={setRecaptchaToken}
+            className="mb-4"
+          />
           <button
             type="submit"
             className="w-full bg-primary text-white py-2 rounded font-semibold hover:bg-primary/90 transition mb-3"
-            disabled={loading}
+            disabled={loading || !recaptchaToken}
           >
             {loading ? 'Registering...' : 'Register'}
           </button>
