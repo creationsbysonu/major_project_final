@@ -2,6 +2,7 @@ import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import { motion } from 'framer-motion';
 import { Sparkles, Home, Percent, Search } from 'lucide-react';
+import ProductsList from '@/components/ProductsList';
 
 const homeDecorCategories = [
   { name: 'Modern Minimalist', image: '/images/decor/modern-minimalist.jpg' },
@@ -192,6 +193,18 @@ export default function HomeDecor() {
         >
           Get Recommendations
         </motion.a>
+      </motion.section>
+
+      {/* Home Decor in this Category */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="mt-24 px-4 max-w-7xl mx-auto"
+      >
+        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Home Decor in this Category</h2>
+        <ProductsList categoryId={6} />
       </motion.section>
     </div>
     <Footer/>

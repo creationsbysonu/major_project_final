@@ -44,6 +44,7 @@ class Product(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     description = models.TextField()
     short_description = models.CharField(max_length=300, blank=True)
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
     
     # Pricing
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -111,9 +112,12 @@ class Product(models.Model):
         super().save(*args, **kwargs)
 
     def get_discount_amount(self):
-        orig = to_float(self.original_price)
-        prc = to_float(self.price)
-        return orig - prc
+        try:
+            if self.original_price and self.price:
+                return float(self.original_price) - float(self.price)
+            return 0.0
+        except (TypeError, ValueError):
+            return 0.0
 
     def is_on_sale(self):
         return self.original_price and self.original_price > self.price

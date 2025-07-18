@@ -82,8 +82,7 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
                 ip_address=request.META.get('REMOTE_ADDR', '127.0.0.1')
             )
             # Update view count
-            instance.view_count = F('view_count') + 1
-            instance.save(update_fields=['view_count'])
+            Product.objects.filter(pk=instance.pk).update(view_count=F('view_count') + 1)
         
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

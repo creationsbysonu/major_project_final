@@ -1,13 +1,9 @@
 import { motion } from 'framer-motion';
 import { Search, Sparkles, TrendingUp, Camera, Percent } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { categoriesAPI } from '@/api/services';
 
-const featuredCategories = [
-  { name: 'Electronics', image: '/images/categories/electronics.jpg' },
-  { name: 'Fashion', image: '/images/categories/fashion.jpg' },
-  { name: 'Books', image: '/images/categories/books.jpg' },
-  { name: 'Home_Decor', image: '/images/categories/home.jpg' },
-  { name: 'Gadgets', image: '/images/categories/gadgets.jpg' },
-];
+// Removed hardcoded featuredCategories
 
 const trendingProducts = [
   { name: 'Noise Cancelling Headphones', image: '/images/products/headphones.jpg', price: '$199' },
@@ -24,6 +20,12 @@ const salesProducts = [
 ];
 
 export default function HomeContent() {
+  const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    categoriesAPI.getAll().then(res => setCategories(res.data));
+  }, []);
+
   return (
     <div className="pt-20">
       {/* Hero section */}
@@ -49,7 +51,7 @@ export default function HomeContent() {
         </motion.a>
       </motion.section>
 
-      {/* Featured categories */}
+      {/* Featured categories (from backend) */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
@@ -59,19 +61,21 @@ export default function HomeContent() {
       >
         <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">Shop by Categories</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {featuredCategories.map((cat) => (
+          {categories.map((cat) => (
             <motion.a
-              key={cat.name}
+              key={cat.id}
               href={`/category/${cat.name.toLowerCase()}`}
               whileHover={{ scale: 1.05 }}
               className="group relative rounded-xl overflow-hidden shadow-lg"
             >
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition" />
+              {cat.image && (
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              )}
+              <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition" />
               <h3 className="absolute bottom-4 left-4 text-lg font-semibold text-white">
                 {cat.name}
               </h3>

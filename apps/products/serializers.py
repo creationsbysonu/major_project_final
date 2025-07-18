@@ -1,8 +1,5 @@
 from rest_framework import serializers
-
-# Create your serializers here.from rest_framework import serializers
-from django.contrib.auth.models import User
-from .models import Product, Brand, ProductImage, ProductAttribute, ProductReview, ProductView
+from .models import Product, Brand, ProductImage, ProductAttribute, ProductReview
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,12 +36,12 @@ class ProductSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     discount_amount = serializers.SerializerMethodField()
     is_on_sale = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'slug', 'description', 'short_description',
-            'price', 'original_price', 'discount_percentage', 'discount_amount',
+            'price', 'original_price', 'image', 'discount_percentage', 'discount_amount',
             'category', 'category_name', 'brand', 'brand_name',
             'stock', 'stock_status', 'sku',
             'is_active', 'is_featured', 'is_trending', 'is_on_sale',
@@ -56,26 +53,32 @@ class ProductSerializer(serializers.ModelSerializer):
             'view_count', 'rating_average', 'rating_count', 'stock_status',
             'created_at', 'updated_at'
         ]
-    
+
     def get_primary_image(self, obj):
         primary_image = obj.images.filter(is_primary=True).first()
         if primary_image:
             return ProductImageSerializer(primary_image).data
         return None
-    
+
     def get_discount_amount(self, obj):
-        return obj.get_discount_amount()
-    
+        try:
+            # Make sure this always returns a resolved float
+            if obj.original_price and obj.price:
+                return float(obj.original_price - obj.price)
+        except:
+            pass
+        return 0.0
+
     def get_is_on_sale(self, obj):
-        return obj.is_on_sale()
+        try:
+            return obj.price < obj.original_price
+        except:
+            return False
 
 class ProductDetailSerializer(ProductSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     attributes = ProductAttributeSerializer(many=True, read_only=True)
     reviews = ProductReviewSerializer(many=True, read_only=True)
-    
+
     class Meta(ProductSerializer.Meta):
-        fields = ProductSerializer.Meta.fields + [
-            'images', 'attributes', 'reviews', 'meta_title', 'meta_description',
-            'purchase_count'
-        ]
+        fields = ProductSerializer.Meta.fields + ['images', 'attributes', 'reviews']

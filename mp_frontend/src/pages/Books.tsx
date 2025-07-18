@@ -1,27 +1,14 @@
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import { motion } from 'framer-motion';
-import { Sparkles, BookOpen, Percent } from 'lucide-react';
+import { Sparkles, BookOpen } from 'lucide-react';
+import ProductsList from '@/components/ProductsList';
 
 const bookCategories = [
   { name: 'Fantasy', image: '/images/books/fantasy.jpg' },
   { name: 'Science Fiction', image: '/images/books/scifi.jpg' },
   { name: 'Mystery', image: '/images/books/mystery.jpg' },
   { name: 'Romance', image: '/images/books/romance.jpg' },
-];
-
-const featuredBooks = [
-  { name: 'The Night Circus', image: '/images/books/night-circus.jpg', price: '$19' },
-  { name: 'Dune', image: '/images/books/dune.jpg', price: '$24' },
-  { name: 'Gone Girl', image: '/images/books/gone-girl.jpg', price: '$15' },
-  { name: 'Pride & Prejudice', image: '/images/books/pride.jpg', price: '$12' },
-];
-
-const bookDeals = [
-  { name: 'Lord of the Rings', image: '/images/books/lotr.jpg', oldPrice: '$49', newPrice: '$29', discount: '40%' },
-  { name: '1984', image: '/images/books/1984.jpg', oldPrice: '$19', newPrice: '$11', discount: '42%' },
-  { name: 'Sherlock Holmes', image: '/images/books/sherlock.jpg', oldPrice: '$39', newPrice: '$23', discount: '41%' },
-  { name: 'To Kill a Mockingbird', image: '/images/books/mockingbird.jpg', oldPrice: '$25', newPrice: '$15', discount: '40%' },
 ];
 
 export default function BooksContent() {
@@ -158,7 +145,7 @@ export default function BooksContent() {
 </motion.section>
 
 
-      {/* Featured Books */}
+      {/* Render real products for the Books category */}
       <motion.section
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -166,66 +153,8 @@ export default function BooksContent() {
         viewport={{ once: true }}
         className="mt-24 px-4 max-w-7xl mx-auto"
       >
-        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Featured Books</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-          {featuredBooks.map((book) => (
-            <motion.a
-              key={book.name}
-              href={`/product/${book.name.toLowerCase().replace(/ /g, '-')}`}
-              whileHover={{ rotate: 2, scale: 1.05 }}
-              className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl hover:shadow-2xl transition overflow-hidden"
-            >
-              <img src={book.image} alt={book.name} className="w-full h-52 object-cover" />
-              <div className="p-5">
-                <h4 className="font-bold text-gray-800 dark:text-gray-200 text-lg">{book.name}</h4>
-                <p className="text-yellow-700 font-bold text-base mt-1">{book.price}</p>
-              </div>
-            </motion.a>
-          ))}
-        </div>
-      </motion.section>
-
-      {/* Book Deals */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        viewport={{ once: true }}
-        className="mt-24 px-4 max-w-7xl mx-auto"
-      >
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold">Hot Book Deals</h2>
-          <motion.a
-            href="#book-deals"
-            whileHover={{ scale: 1.05 }}
-            className="inline-flex items-center gap-2 text-yellow-700 hover:underline"
-          >
-            <Percent className="w-4 h-4" />
-            View All
-          </motion.a>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-          {bookDeals.map((deal) => (
-            <motion.a
-              key={deal.name}
-              href={`/product/${deal.name.toLowerCase().replace(/ /g, '-')}`}
-              whileHover={{ rotate: -2, scale: 1.05 }}
-              className="relative bg-white dark:bg-gray-900 rounded-3xl shadow-xl hover:shadow-2xl transition overflow-hidden"
-            >
-              <img src={deal.image} alt={deal.name} className="w-full h-52 object-cover" />
-              <div className="p-5">
-                <h4 className="font-bold text-gray-800 dark:text-gray-200 text-lg">{deal.name}</h4>
-                <div className="flex items-center gap-3 text-sm mt-1">
-                  <span className="line-through text-gray-500">{deal.oldPrice}</span>
-                  <span className="text-yellow-700 font-bold">{deal.newPrice}</span>
-                </div>
-              </div>
-              <span className="absolute top-3 right-3 bg-yellow-700 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-                {deal.discount} OFF
-              </span>
-            </motion.a>
-          ))}
-        </div>
+        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Books in this Category</h2>
+        <ProductsList categoryId={4} />
       </motion.section>
 
       {/* Personalized Recommendations */}

@@ -46,7 +46,7 @@ const ProductsList = ({ categoryId }: ProductsListProps) => {
             className="bg-white dark:bg-gray-900 rounded-lg shadow hover:shadow-lg p-4 flex flex-col items-center transition hover:-translate-y-1 hover:bg-primary/10"
           >
             {prod.image && (
-              <img src={prod.image} alt={prod.name} className="w-24 h-24 object-cover rounded mb-2" />
+              <img src={prod.image} alt={prod.name} className="w-36 h-36 object-cover rounded mb-2" />
             )}
             <span className="font-semibold text-center text-gray-800 dark:text-gray-100 mb-1">{prod.name}</span>
             <span className="text-primary font-bold">₹{prod.price}</span>
