@@ -23,39 +23,51 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordRequestPage from './pages/ResetPasswordRequestPage';
 import ResetPasswordConfirmPage from './pages/ResetPasswordConfirmPage';
+import { useEffect } from 'react';
+
+function CartAuthSync() {
+  const { refreshCart } = useCart();
+  useEffect(() => {
+    const handleStorage = () => {
+      refreshCart();
+    };
+    window.addEventListener('storage', handleStorage);
+    refreshCart(); // Also refresh on mount
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [refreshCart]);
+  return null;
+}
 
 function App() {
   return (
-    <>
     <Router>
       <Routes>
-        {/* Redirect root to your stutter detector for demo purposes */}
-        <Route path="/" element={<Home/>}/>
-        <Route path="/dashboard" element={<Dashboard/>}/>
-        <Route path="/start-test" element={<StartTest />} />
-        <Route path="/practice-test" element={<PracticeTest />} />
-        <Route path="/tips" element={<TipsPage />} />
-        <Route path="/donate" element={<Donate/>} />
-        <Route path="/contactus" element={<ContactUs/>}/>
-        <Route path="/aboutus" element={<AboutUs/>}/>
-        <Route path="/aboutpage" element={<AboutPage/>}/>
-        <Route path="/helppage" element={<HelpPage/>}/>
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/category/electronics" element={<Electronics/>}/>
-        <Route path="/category/fashion" element={<Fashion/>}/>
-        <Route path="/category/books" element={<Books/>}/>
-        <Route path="/category/gadgets" element={<Gadgets/>}/>
-        <Route path="/category/home_decor" element={<HomeDecor/>}/>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/reset-password" element={<ResetPasswordRequestPage />} />
-        <Route path="/reset-password/:uidb64/:token" element={<ResetPasswordConfirmPage />} />
+          {/* Redirect root to your stutter detector for demo purposes */}
+          <Route path="/" element={<Home/>}/>
+          <Route path="/dashboard" element={<Dashboard/>}/>
+          <Route path="/start-test" element={<StartTest />} />
+          <Route path="/practice-test" element={<PracticeTest />} />
+          <Route path="/tips" element={<TipsPage />} />
+          <Route path="/donate" element={<Donate/>} />
+          <Route path="/contactus" element={<ContactUs/>}/>
+          <Route path="/aboutus" element={<AboutUs/>}/>
+          <Route path="/aboutpage" element={<AboutPage/>}/>
+          <Route path="/helppage" element={<HelpPage/>}/>
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/category/electronics" element={<Electronics/>}/>
+          <Route path="/category/fashion" element={<Fashion/>}/>
+          <Route path="/category/books" element={<Books/>}/>
+          <Route path="/category/gadgets" element={<Gadgets/>}/>
+          <Route path="/category/home_decor" element={<HomeDecor/>}/>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordRequestPage />} />
+          <Route path="/reset-password/:uidb64/:token" element={<ResetPasswordConfirmPage />} />
 
-        {/* Optionally: Add a 404 page */}
-        <Route path="*" element={<div className="text-center mt-20 text-2xl font-semibold">404 Not Found</div>} />
-      </Routes>
+          {/* Optionally: Add a 404 page */}
+          <Route path="*" element={<div className="text-center mt-20 text-2xl font-semibold">404 Not Found</div>} />
+        </Routes>
     </Router>
-    </>
   );
 }
 

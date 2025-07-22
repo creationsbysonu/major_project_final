@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { productsAPI, cartAPI } from '@/api/services';
+import { useCart } from '@/lib/CartContext';
 
 interface Product {
   id: number;
@@ -15,6 +16,7 @@ interface ProductsListProps {
 const ProductsList = ({ categoryId }: ProductsListProps) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { addToCart } = useCart();
 
   useEffect(() => {
     if (categoryId) {
@@ -26,7 +28,7 @@ const ProductsList = ({ categoryId }: ProductsListProps) => {
 
   const handleAddToCart = async (productId: number) => {
     try {
-      await cartAPI.add(productId, 1);
+      await addToCart(productId, 1);
       setSuccessMsg('Added to cart!');
       setTimeout(() => setSuccessMsg(null), 1500);
     } catch {

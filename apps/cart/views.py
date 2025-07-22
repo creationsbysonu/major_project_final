@@ -19,7 +19,7 @@ class CartView(APIView):
     permission_classes = [permissions.AllowAny]
     def get(self, request):
         cart = get_cart(request)
-        serializer = CartSerializer(cart)
+        serializer = CartSerializer(cart, context={'request': request})
         return Response(serializer.data)
 
 class AddToCartView(APIView):
@@ -29,13 +29,13 @@ class AddToCartView(APIView):
         product_id = request.data.get('product')
         quantity = int(request.data.get('quantity', 1))
         product = get_object_or_404(Product, id=product_id)
-        item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        item, created = CartItem.objects.get_or_create(cart=cart, product=product, defaults={'quantity': 1})
         if not created:
             item.quantity += quantity
         else:
             item.quantity = quantity
         item.save()
-        return Response({'success': True, 'item': CartItemSerializer(item).data})
+        return Response({'success': True, 'item': CartItemSerializer(item, context={'request': request}).data})
 
 class UpdateCartItemView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -45,7 +45,7 @@ class UpdateCartItemView(APIView):
         quantity = int(request.data.get('quantity', 1))
         item.quantity = quantity
         item.save()
-        return Response({'success': True, 'item': CartItemSerializer(item).data})
+        return Response({'success': True, 'item': CartItemSerializer(item, context={'request': request}).data})
 
 class RemoveCartItemView(APIView):
     permission_classes = [permissions.AllowAny]

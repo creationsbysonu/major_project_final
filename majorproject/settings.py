@@ -246,3 +246,14 @@ REST_AUTH_SERIALIZERS = {
 }
 
 RECAPTCHA_SECRET_KEY = '6LfHFYUrAAAAAIpGYjusAkSflMou9S7dmqamtNFT'
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),      # 1 hour, or longer if you prefer
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),      # 7 days
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+}

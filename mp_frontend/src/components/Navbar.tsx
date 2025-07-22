@@ -8,6 +8,7 @@ import CartModal from './CartModal';
 import FeedbackModal from './FeedBackModal';
 import { authAPI } from '@/api/services';
 import { Link } from 'react-router-dom';
+import { useCart } from '@/lib/CartContext';
 
 const categories = ['Electronics', 'Fashion', 'Books', 'Home_Decor', 'Gadgets'];
 
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [user, setUser] = useState<{ username: string } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { items } = useCart();
 
   useEffect(() => {
     const token = localStorage.getItem('access');
@@ -40,8 +42,6 @@ export default function Navbar() {
     setUser(null);
     window.location.reload();
   };
-
-  const yourCartItems: any[] = []; // Replace with actual cart data
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
@@ -145,7 +145,7 @@ export default function Navbar() {
             >
               <ShoppingCart size={20} />
               <span className="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5">
-                {yourCartItems.length || 0}
+                {items.length || 0}
               </span>
             </motion.button>
 
@@ -256,7 +256,7 @@ export default function Navbar() {
                 <button onClick={() => setIsCartOpen(true)} className="relative text-gray-800 dark:text-gray-100">
                   <ShoppingCart size={22} />
                   <span className="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5">
-                    {yourCartItems.length || 0}
+                    {items.length || 0}
                   </span>
                 </button>
               </div>
