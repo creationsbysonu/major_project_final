@@ -30,7 +30,7 @@ var/
 # Django stuff:
 *.log
 db.sqlite3
-media/
+
 staticfiles/
 
 # VSCode
