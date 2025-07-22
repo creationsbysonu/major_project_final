@@ -59,7 +59,7 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     
 ]
-SITE_ID = 1
+SITE_ID = 2
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -122,7 +122,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'MajorProject',
         'USER':'root',
-        'PASSWORD': '',
+        'PASSWORD': 'guptasonu',
         'HOST': '127.0.0.1',
         'PORT': '3306',
 

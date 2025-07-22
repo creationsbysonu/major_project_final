@@ -208,7 +208,7 @@ export default function FashionContent() {
         className="mt-24 px-4 max-w-7xl mx-auto"
       >
         <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Fashion in this Category</h2>
-        <ProductsList categoryId={1} />
+        <ProductsList categoryId={4} />
       </motion.section>
     </div>
     <Footer/>
