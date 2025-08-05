@@ -47,7 +47,7 @@ export default function SearchResults() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <p className="text-xl mb-6 text-gray-600 dark:text-gray-400">No matching products found.</p>
+            <p className="text-xl mb-6 text-gray-600 dark:text-gray-400">No matching products found. please use other images.</p>
             <button className="px-8 py-3 rounded-full text-white font-medium hover:shadow-lg transition-all hover:scale-105 bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-purple-400/30 dark:from-purple-600 dark:to-pink-600 dark:hover:shadow-purple-500/30">
               Explore More
             </button>
