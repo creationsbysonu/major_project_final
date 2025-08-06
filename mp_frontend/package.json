@@ -27,6 +27,7 @@
     "react-masonry-css": "^1.0.16",
     "react-minimal-pie-chart": "^9.1.1",
     "react-router-dom": "^7.6.2",
+    "react-webcam": "^7.2.0",
     "recharts": "^3.0.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",

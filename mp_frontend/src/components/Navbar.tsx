@@ -1,32 +1,210 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Store, Menu, X, ShoppingCart, Sun, Moon, Camera, Search, Play, Pause, User
+  Store, Menu, X, ShoppingCart, Sun, Moon, Camera, Search, Play, Pause, User,
+  Upload, FlipVertical2, CheckCircle, XCircle
 } from 'lucide-react';
 import AuthModal from './AuthModal';
 import CartModal from './CartModal';
 import FeedbackModal from './FeedBackModal';
 import { authAPI } from '@/api/services';
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const categories = ['Electronics', 'Fashion', 'Books', 'Home_Decor', 'Gadgets'];
 
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  sku: string;
+  stock: number;
+  category_name: string;
+  similarity?: number;
+}
+
 export default function Navbar() {
+  // Navigation and UI states
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [isPlaying, setIsPlaying] = useState(false);
-  const [searchMode, setSearchMode] = useState('text');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const [user, setUser] = useState<{ username: string } | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [searchImage, setSearchImage] = useState(null);
   const navigate = useNavigate();
 
+  // Search functionality states
+  const [searchMode, setSearchMode] = useState<'text' | 'image'>('text');
+  const [searchImage, setSearchImage] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Camera functionality states
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [showImageOptions, setShowImageOptions] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraMode, setCameraMode] = useState<'environment' | 'user'>('environment');
+  const [imageCaptured, setImageCaptured] = useState(false);
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | null>(null);
+
+  // User authentication state
+  const [user, setUser] = useState<{ username: string } | null>(null);
+
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize camera with selected mode
+  const initCamera = async () => {
+    try {
+      stopCamera(); // Stop any existing stream
+      const constraints = {
+        video: { 
+          facingMode: cameraMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      alert(`Could not access camera: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Clean up camera
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  // Toggle between front and back camera
+  const toggleCamera = () => {
+    setCameraMode(prev => prev === 'environment' ? 'user' : 'environment');
+  };
+
+  // Capture photo from camera
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        const width = videoRef.current.videoWidth;
+        const height = videoRef.current.videoHeight;
+        
+        canvasRef.current.width = width;
+        canvasRef.current.height = height;
+        context.drawImage(videoRef.current, 0, 0, width, height);
+        
+        canvasRef.current.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], 'capture.jpg', { 
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            setSearchImage(file);
+            setImageCaptured(true);
+            setCapturedImageUrl(URL.createObjectURL(blob));
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  };
+
+  // Reset camera capture
+  const resetCapture = () => {
+    setImageCaptured(false);
+    if (capturedImageUrl) {
+      URL.revokeObjectURL(capturedImageUrl);
+      setCapturedImageUrl(null);
+    }
+    initCamera();
+  };
+
+  // Handle file upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setSearchImage(e.target.files[0]);
+      setShowImageOptions(false);
+      setShowCameraModal(false);
+    }
+  };
+
+  // Submit search
+  const handleSearch = async () => {
+    if (searchMode === 'image' && searchImage) {
+      await handleImageSearch();
+    } else if (searchMode === 'text' && searchQuery.trim()) {
+      await handleTextSearch();
+    } else {
+      alert(`Please ${searchMode === 'image' ? 'upload or capture an image' : 'enter a search query'}`);
+    }
+  };
+
+  // Handle image search
+  const handleImageSearch = async () => {
+    if (!searchImage) return;
+
+    const formData = new FormData();
+    formData.append("file", searchImage);
+
+    try {
+      // Step 1: Get similar products from image processing service
+      const fastApiResponse = await axios.post("http://localhost:8001/search-image/", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      const matchedResults = fastApiResponse.data.results;
+      const skuList = matchedResults.map((item: { sku: string }) => item.sku);
+
+      if (skuList.length > 0) {
+        // Step 2: Get full product details from main API
+        const djangoResponse = await axios.post("http://localhost:8000/api/products/by-skus/", {
+          skus: skuList
+        });
+
+        const products: Product[] = djangoResponse.data;
+
+        // Step 3: Combine data with similarity scores
+        const mergedResults = products.map(product => {
+          const match = matchedResults.find((m: { sku: string }) => m.sku === String(product.sku));
+          return {
+            ...product,
+            similarity: match?.similarity ?? null
+          };
+        });
+
+        // Step 4: Navigate to results page
+        navigate("/search-results", { state: { results: mergedResults } });
+      } else {
+        alert("No similar products found.");
+      }
+    } catch (err) {
+      console.error("Search failed:", err);
+      alert("Image search failed. Please try again.");
+    }
+  };
+
+  // Handle text search
+  const handleTextSearch = async () => {
+    try {
+      const response = await axios.get(`http://localhost:8000/api/products/search/?q=${encodeURIComponent(searchQuery)}`);
+      navigate("/search-results", { state: { results: response.data } });
+    } catch (err) {
+      console.error("Search failed:", err);
+      alert("Text search failed. Please try again.");
+    }
+  };
+
+  // User authentication effects
   useEffect(() => {
     const token = localStorage.getItem('access');
     if (token) {
@@ -45,7 +223,29 @@ export default function Navbar() {
     window.location.reload();
   };
 
-  const yourCartItems: any[] = []; // Replace with actual cart data
+  // Camera effects
+  useEffect(() => {
+    if (showCameraModal) {
+      initCamera();
+    } else {
+      stopCamera();
+      setImageCaptured(false);
+      if (capturedImageUrl) {
+        URL.revokeObjectURL(capturedImageUrl);
+        setCapturedImageUrl(null);
+      }
+    }
+  }, [showCameraModal, cameraMode]);
+
+  // Cleanup effects
+  useEffect(() => {
+    return () => {
+      stopCamera();
+      if (capturedImageUrl) {
+        URL.revokeObjectURL(capturedImageUrl);
+      }
+    };
+  }, []);
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
@@ -56,6 +256,8 @@ export default function Navbar() {
 
   const togglePlay = () => setIsPlaying(!isPlaying);
 
+  const yourCartItems: any[] = []; // Replace with actual cart data
+
   return (
     <>
       <motion.nav
@@ -65,95 +267,69 @@ export default function Navbar() {
         className="sticky top-0 z-50 bg-white/30 dark:bg-black/30 backdrop-blur-lg shadow-md transition"
       >
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-0">
-          <a href="/" className="flex items-center gap-2 text-3xl font-bold tracking-tight text-black dark:text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
+          <Link to="/" className="flex items-center gap-2 text-3xl font-bold tracking-tight text-black dark:text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
             <Store size={32} />e-pasal
-          </a>
+          </Link>
 
+          {/* Search Bar */}
           <div className="flex items-center relative w-full max-w-lg">
             <input
               type={searchMode === 'text' ? 'text' : 'file'}
               accept={searchMode === 'image' ? 'image/*' : undefined}
               placeholder={searchMode === 'text' ? 'Search products...' : ''}
-              onChange={(e) => {
-                if (searchMode === 'image' && e.target.files?.[0]) {
-                  setSearchImage(e.target.files[0]);
-                }
-              }}
+              value={searchMode === 'text' ? searchQuery : undefined}
+              onChange={(e) => 
+                searchMode === 'text' 
+                  ? setSearchQuery(e.target.value)
+                  : handleFileUpload(e)
+              }
+              ref={fileInputRef}
               className="w-full py-2 px-4 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary transition"
+              style={{ display: searchMode === 'image' ? 'none' : 'block' }}
             />
+            {searchMode === 'image' && searchImage && (
+              <div className="absolute left-4 flex items-center gap-2">
+                <CheckCircle className="text-green-500" size={18} />
+                <span className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-xs">
+                  {searchImage.name}
+                </span>
+              </div>
+            )}
             <div className="absolute right-2 flex items-center gap-2">
               <motion.button
-                onClick={() => setSearchMode('text')}
+                onClick={() => {
+                  setSearchMode('text');
+                  setSearchImage(null);
+                }}
                 whileHover={{ scale: 1.05 }}
                 className={`px-3 py-1 rounded-full text-sm transition ${searchMode === 'text' ? 'bg-gray-900 text-white shadow' : 'bg-gray-200 dark:bg-black text-gray-600 dark:text-white'}`}
               >
                 Text
               </motion.button>
               <motion.button
-                onClick={() => setSearchMode('image')}
+                onClick={() => {
+                  setSearchMode('image');
+                  setShowImageOptions(true);
+                }}
                 whileHover={{ scale: 1.05 }}
                 className={`px-3 py-1 rounded-full text-sm flex items-center transition ${searchMode === 'image' ? 'bg-gray-900 text-white shadow' : 'bg-gray-200 dark:bg-black text-gray-600 dark:text-gray-300'}`}
               >
                 <Camera size={16} className="mr-1" />
-                Img
+                Image
               </motion.button>
 
-              {/* main serch integration that sends to backend */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 className="p-2 bg-primary text-white rounded-full shadow hover:bg-primary/90 transition"
-                onClick={async () => {
-                      if (searchMode === 'image' && searchImage) {
-                        const formData = new FormData();
-                        formData.append("file", searchImage);
-
-                        try {
-                          // STEP 1: Get SKUs with similarity scores from FastAPI
-                          const fastApiResponse = await axios.post("http://localhost:8001/search-image/", formData, {
-                            headers: { "Content-Type": "multipart/form-data" }
-                          });
-
-                          const matchedResults = fastApiResponse.data.results; // [{ sku, similarity }]
-                          const skuList = matchedResults.map(item => item.sku);
-
-                          if (skuList.length > 0) {
-                            // STEP 2: Fetch product details from Django using SKU list
-                            const djangoResponse = await axios.post("http://localhost:8000/api/products/by-skus/", {
-                              skus: skuList
-                            });
-
-                            const products = djangoResponse.data;
-
-                            // STEP 3: Merge similarity scores into the product objects
-                            const mergedResults = products.map(product => {
-                              const match = matchedResults.find(m => m.sku === String(product.sku));
-                              return {
-                                ...product,
-                                similarity: match?.similarity ?? null
-                              };
-                            });
-
-                            // STEP 4: Navigate to Search Results page
-                            navigate("/search-results", { state: { results: mergedResults } });
-                          } else {
-                            alert("No similar products found.");
-                          }
-                        } catch (err) {
-                          console.error("Search failed:", err);
-                          alert("Something went wrong during image search.");
-                        }
-                      } else if (searchMode === 'text') {
-                        alert("Text search not yet implemented.");
-                      } else {
-                        alert("Please upload an image first.");
-                      }
-                    }}
+                onClick={handleSearch}
+                disabled={(searchMode === 'image' && !searchImage) || (searchMode === 'text' && !searchQuery.trim())}
               >
-                  <Search size={18} />
+                <Search size={18} />
               </motion.button>
             </div>
           </div>
 
+          {/* Right Navigation */}
           <div className="hidden md:flex items-center gap-6 text-sm font-medium">
             <div
               className="relative"
@@ -189,10 +365,10 @@ export default function Navbar() {
             </div>
 
             <button
-                onClick={() => setIsFeedbackOpen(true)}
-                className="text-sm font-medium hover:underline text-gray-700 dark:text-gray-300"
-              >
-                Feedback
+              onClick={() => setIsFeedbackOpen(true)}
+              className="text-sm font-medium hover:underline text-gray-700 dark:text-gray-300"
+            >
+              Feedback
             </button>
 
             <motion.button
@@ -222,12 +398,12 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link
-                to="/login"
+              <button
+                onClick={() => setIsAuthOpen(true)}
                 className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition flex items-center"
               >
                 <User className="text-gray-700 dark:text-gray-300" size={20} />
-              </Link>
+              </button>
             )}
 
             <motion.button onClick={togglePlay} whileTap={{ scale: 1.2, rotate: 180 }} className="p-4 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition-all">
@@ -259,7 +435,7 @@ export default function Navbar() {
             </motion.button>
           </div>
 
-          {/* Hamburger */}
+          {/* Mobile Menu Button */}
           <div className="md:hidden ml-auto">
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -267,6 +443,7 @@ export default function Navbar() {
           </div>
         </div>
 
+        {/* Mobile Menu */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
@@ -277,9 +454,24 @@ export default function Navbar() {
               className="md:hidden px-4 pb-5 pt-2 bg-white dark:bg-black space-y-3"
             >
               {categories.map((cat) => (
-                <a key={cat} href={`/category/${cat.toLowerCase()}`} className="block text-gray-800 dark:text-gray-200 hover:text-primary transition">{cat}</a>
+                <Link 
+                  key={cat} 
+                  to={`/category/${cat.toLowerCase()}`} 
+                  className="block text-gray-800 dark:text-gray-200 hover:text-primary transition"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {cat}
+                </Link>
               ))}
-              <a href="/feedback" className="block text-gray-800 dark:text-gray-200 hover:text-primary transition">Feedback</a>
+              <button 
+                onClick={() => {
+                  setIsFeedbackOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="block text-gray-800 dark:text-gray-200 hover:text-primary transition"
+              >
+                Feedback
+              </button>
               <div className="flex items-center gap-4 pt-3">
                 <motion.button onClick={togglePlay} whileTap={{ scale: 1.2 }} className="p-4 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition">
                   {isPlaying ? <Pause className="text-red-500" size={22} /> : <Play className="text-green-500" size={22} />}
@@ -297,26 +489,219 @@ export default function Navbar() {
                     </button>
                     {showProfileMenu && (
                       <div className="absolute right-0 mt-2 bg-white dark:bg-gray-900 shadow-lg rounded-lg py-2 z-50 min-w-[120px]">
-                        <Link to="/profile" className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">Profile</Link>
-                        <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500" onClick={handleLogout}>Logout</button>
+                        <Link 
+                          to="/profile" 
+                          className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Profile
+                        </Link>
+                        <button 
+                          className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500" 
+                          onClick={() => {
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Logout
+                        </button>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <Link
-                    to="/login"
+                  <button
+                    onClick={() => {
+                      setIsAuthOpen(true);
+                      setIsMenuOpen(false);
+                    }}
                     className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 hover:bg-primary/20 dark:hover:bg-primary/30 transition flex items-center"
                   >
                     <User className="text-gray-700 dark:text-gray-300" size={20} />
-                  </Link>
+                  </button>
                 )}
-                <button onClick={() => setIsCartOpen(true)} className="relative text-gray-800 dark:text-gray-100">
+                <button 
+                  onClick={() => {
+                    setIsCartOpen(true);
+                    setIsMenuOpen(false);
+                  }} 
+                  className="relative text-gray-800 dark:text-gray-100"
+                >
                   <ShoppingCart size={22} />
                   <span className="absolute -top-2 -right-2 text-[10px] bg-red-500 text-white rounded-full px-1.5">
                     {yourCartItems.length || 0}
                   </span>
                 </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Image Options Modal */}
+        <AnimatePresence>
+          {showImageOptions && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowImageOptions(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold mb-4">Image Search Options</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowImageOptions(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                  >
+                    <Upload size={18} />
+                    Upload Image
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCameraModal(true);
+                      setShowImageOptions(false);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                  >
+                    <Camera size={18} />
+                    Take Photo
+                  </button>
+                  {searchImage && (
+                    <button
+                      onClick={() => {
+                        setSearchImage(null);
+                        setShowImageOptions(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-100 dark:bg-red-900/30 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/50 transition text-red-600 dark:text-red-400"
+                    >
+                      <XCircle size={18} />
+                      Remove Current Image
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowImageOptions(false)}
+                  className="mt-4 w-full py-2 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition"
+                >
+                  Cancel
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Camera Modal */}
+        <AnimatePresence>
+          {showCameraModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="bg-white dark:bg-gray-800 rounded-xl p-4 w-full max-w-md"
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-bold">Take Product Photo</h3>
+                  <button
+                    onClick={() => {
+                      stopCamera();
+                      setShowCameraModal(false);
+                    }}
+                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="relative aspect-[4/3] bg-black rounded-lg overflow-hidden">
+                  {imageCaptured && capturedImageUrl ? (
+                    <>
+                      <img
+                        src={capturedImageUrl}
+                        alt="Captured product"
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                        <CheckCircle className="text-green-400" size={48} />
+                      </div>
+                    </>
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+
+                <div className="flex justify-center gap-4 mt-4">
+                  {!imageCaptured ? (
+                    <>
+                      <button
+                        onClick={toggleCamera}
+                        className="p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                        title="Switch camera"
+                      >
+                        <FlipVertical2 size={20} />
+                      </button>
+                      <button
+                        onClick={capturePhoto}
+                        className="p-4 rounded-full bg-white border-4 border-white shadow-lg hover:scale-105 transition-transform"
+                        title="Capture photo"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-red-500"></div>
+                      </button>
+                      <div className="p-3 rounded-full opacity-0">
+                        <FlipVertical2 size={20} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={resetCapture}
+                        className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center gap-2"
+                      >
+                        <XCircle size={18} />
+                        Retake
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCameraModal(false);
+                        }}
+                        className="px-4 py-2 bg-primary text-white rounded-lg flex items-center gap-2"
+                      >
+                        <CheckCircle size={18} />
+                        Use This Photo
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div className="mt-3 text-sm text-center text-gray-500 dark:text-gray-400">
+                  {!imageCaptured ? (
+                    <p>Position the product in the frame and capture</p>
+                  ) : (
+                    <p className="text-green-500 dark:text-green-400">Photo captured successfully!</p>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
